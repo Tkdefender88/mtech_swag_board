@@ -2,37 +2,62 @@
  * main.c
  *
  *  Created on: May 3, 2023
- *      Author: juicetin
+ *      Author: Justin Bak
  */
 #include <msp430.h>
+#include "main.h"
 
-void led_init(void){
-    P2DIR |= (BIT0+BIT1+BIT2+BIT3+BIT4+BIT5);        // Annodes as outputs  (Active Low)
-    P2OUT |= (BIT0+BIT1+BIT2+BIT3+BIT4);             // Annodes all off
-    P2OUT |= BIT5;                                   // PWM pin on (for brightness) On
-    P3DIR |= (BIT1+BIT2+BIT3+BIT4+BIT5+BIT6+BIT7);   // Cathodes all as outputs
-    P3OUT &=~ (BIT1+BIT2+BIT3+BIT4+BIT5+BIT6+BIT7);  // Cathodes all low (Active high)
+char display[] = {0x7f, 0x04, 0x18, 0x04, 0x7f};
+
+void selectLED(char* display, int row, int column, int state) {
+    if (state != 0) {
+        display[column] |= (1<<row);
+    } else {
+        display[column] &=~ (1<<row);
+    }
 }
 
-void clearLEDs(void) {
-    P2OUT |= (BIT0+BIT1+BIT2+BIT3+BIT4);
-    P3OUT &=~ (BIT1+BIT2+BIT3+BIT4+BIT5+BIT6+BIT7);
+void initLed(void){
+    P2DIR |= ANODES + BIT5;                             // Annodes as outputs  (Active Low)
+    P2OUT |= ANODES + BIT5;
+    P3DIR |= CATHODES;                                  // Cathodes all as outputs
+    P3OUT &=~ CATHODES;                                 // Cathodes all low (Active high)
 }
 
-void selectLED(unsigned int x, unsigned int y) {
-    const int cathodePins[] = {BIT0, BIT1, BIT2, BIT3, BIT4};
-    const int anodePins[] = {BIT1, BIT2, BIT3, BIT4, BIT5, BIT6, BIT7};
+void initTimer(void) {
+    TA1CCTL0 = CCIE;
+    TA1CCR0 = 0;
+    TA1CTL = TASSEL_2 + MC_2;
 
-    clearLEDs();
-
-    P2OUT &=~ cathodePins[y];
-    P3OUT |= anodePins[x];
+    _BIS_SR(GIE);
 }
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;
 
-    led_init();
+    initLed();
+    initTimer();
 
-    selectLED(1, 1);
+
+    selectLED(display, 0, 2, 1);
+
+    selectLED(display, 1, 2, 1);
+
+    __no_operation();
+}
+
+unsigned int cathode_index = 0;
+#pragma vector = TIMER1_A0_VECTOR
+__interrupt void Timer1_A0_ISR(void) {
+    P2OUT |= (ANODES);
+    P2OUT &=~ (1<<cathode_index);
+
+    P3OUT &=~ (CATHODES);
+    P3OUT |= display[cathode_index]<<1;
+
+    if(++cathode_index > 4) {
+        cathode_index = 0;
+    }
+
+    TA1CCR0 += TIMER_INCREMENT;
 }
