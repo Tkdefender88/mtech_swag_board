@@ -8,8 +8,11 @@
 #include "main.h"
 
 char display[] = {0x7f, 0x04, 0x18, 0x04, 0x7f};
+int button_input = 0;
 
-void selectLED(char* display, int row, int column, int state) {
+MicroControllerState mcu_state = DISPLAY_MODE;
+
+void selectLED(char* display, int row, unsigned int column, int state) {
     if (state != 0) {
         display[column] |= (1<<row);
     } else {
@@ -38,12 +41,34 @@ int main(void) {
     initLed();
     initTimer();
 
+    for(EVER) {
+        switch(state) {
+        case GAME_MODE:
+            break;
+        case DISPLAY_MODE:
+            break;
+        case SLAVE_MODE:
+            break;
+        case MENU_MODE;
+            break;
+        }
+    }
 
     selectLED(display, 0, 2, 1);
 
     selectLED(display, 1, 2, 1);
 
     __no_operation();
+}
+
+#pragma vector = PORT1_VECTOR
+__interrupt void Port1_ISR(void) {
+
+}
+
+#pragma vector = PORT2_VECTOR
+__interrupt void Port2_ISR(void) {
+
 }
 
 unsigned int cathode_index = 0;
